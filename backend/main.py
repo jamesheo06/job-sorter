@@ -1,7 +1,7 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from google import genai
-import os
+import os, json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,9 +9,17 @@ load_dotenv()
 app = FastAPI()
 client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 
+# defines the shape of input, 422 error if it doesn't match
 class AnalyzeRequest(BaseModel):
     resume: str
     job_description: str
+
+# defines the shape of the output
+class AnalysisResult(BaseModel):
+    category: str
+    confidence: int
+    matching_skills: list[str]
+    missing_skills: list[str]
 
 # whenever someone sends a POST request to /analyze, run this function and send back its results 
 @app.post("/analyze")
@@ -30,10 +38,38 @@ Consider whether this posting aligns with SWE/ML career goals, not just whether 
 Return ONLY valid JSON, no other text, in this exact format:
 {{"category: "Strong Apply" | "Consider" | "Skip", "confidence": 0-100, "matching_skills": [...], "missing_skills": [...]}}
 """
-    
-    response = client.models.generate_content(
-        model = "gemini-3.5-flash-lite",
-        contents = prompt
-    )
+    # exception handling for LLM API call
+    try:
+        response = client.models.generate_content(
+            model = "gemini-3.5-flash-lite",
+            contents = prompt
+        )
+    except Exception as e:
+        return {"error": "LLM request failed", "details": str(e)}
 
-    return {"raw": response.text}
+    # remove whitespace from beginning and end of string
+    raw_text = response.text.strip()
+
+    # strip markdown code fences if LLM adds them
+    if raw_text.startswith("```"):
+        raw_text = raw_text.split("```")[1]
+        if raw_text.startswith("json"):
+            raw_text = raw_text[4:]
+        raw_text = raw_text.strip()
+
+    
+    # parsing means converting text into structured data format
+    # here we are trying to parse the string into a Python dictionary
+    try:
+        parsed = json.loads(raw_text)
+    except json.JSONDecodeError:
+        return {"error": "Failed to parse LLM response", "raw": raw_text}
+    
+    # check if parsed json matches expected shape
+    # **parsed unpacks the dictionary into the model's fields
+    try:
+        validated = AnalysisResult(**parsed)
+    except ValidationError as e:
+        return {"error": "LLM response did not match expected shape", "details": str(e), "raw": parsed}
+
+    return validated
