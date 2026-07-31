@@ -12,6 +12,8 @@ client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
 # defines the shape of input, 422 error if it doesn't match
 class AnalyzeRequest(BaseModel):
     resume: str
+    title: str | None = None
+    company: str | None = None
     job_description: str
 
 # defines the shape of the output
@@ -36,7 +38,17 @@ Job Description:
 Consider whether this posting aligns with SWE/ML career goals, not just whether the skills technically overlap.
 
 Return ONLY valid JSON, no other text, in this exact format:
-{{"category: "Strong Apply" | "Consider" | "Skip", "confidence": 0-100, "matching_skills": [...], "missing_skills": [...]}}
+{{
+  "category": "Strong Apply",
+  "confidence": 87,
+  "matching_skills": ["Python", "FastAPI"],
+  "missing_skills": ["C++"]
+}}
+
+Rules:
+- category must be one of: "Strong Apply", "Consider", or "Skip"
+- confidence must be an integer from 0 to 100
+- matching_skills and missing_skills must be arrays of strings
 """
     # exception handling for LLM API call
     try:
