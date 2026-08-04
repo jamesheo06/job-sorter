@@ -18,6 +18,7 @@ class AnalyzeRequest(BaseModel):
 
 # defines the shape of the output
 class AnalysisResult(BaseModel):
+    reasoning: str
     category: str
     confidence: int
     matching_skills: list[str]
@@ -35,10 +36,15 @@ Resume:
 Job Description:
 {req.job_description}
 
-Consider whether this posting aligns with SWE/ML career goals, not just whether the skills technically overlap.
+Before producing your final answer, carefully reason through the requirements:
+- Some requirements are phrased as alternatives (e.g. "experience in one or more of X, Y, Z", "X or Y"). If the candidate satisfies ANY ONE of the listed alternatives, do NOT list the others as missing.
+- Distinguish between required/must-have skills and preferred/bonus/nice-to-have skills (often signaled by phrases like "a plus", "bonus", "preferred", "nice to have"). Only list a skill as missing if it is a genuine requirement the candidate lacks — do not penalize missing bonus/preferred skills as heavily as missing core requirements.
+- Be careful: a posting phrasing its core, central requirement in encouraging or beginner-friendly language (e.g. "we welcome candidates willing to learn X", "any experience level with X is fine") does NOT mean X is optional — it means the bar for X is lower, not that X is unnecessary. If the role's fundamental day-to-day work centers on a specific skill or technology (e.g. a role built around 3D/game-engine development), lacking that skill is a meaningful gap regardless of how welcoming the posting's tone is, and should weigh toward "Consider" rather than "Strong Apply", or "Skip" if the gap from the candidate's actual demonstrated experience is large.
+- Consider whether this posting aligns with SWE/ML career goals overall, not just literal keyword overlap between resume and posting.
 
 Return ONLY valid JSON, no other text, in this exact format:
 {{
+  "reasoning": "2-3 sentence explanation of the fit, referencing how you handled any OR-style or bonus requirements",
   "category": "Strong Apply",
   "confidence": 87,
   "matching_skills": ["Python", "FastAPI"],
@@ -49,6 +55,8 @@ Rules:
 - category must be one of: "Strong Apply", "Consider", or "Skip"
 - confidence must be an integer from 0 to 100
 - matching_skills and missing_skills must be arrays of strings
+- missing_skills should only include genuine gaps in required skills, not unmet "bonus" or "preferred" items unless there are many of them
+- reasoning must come first in the JSON so you think it through before committing to the categorical fields
 """
     # exception handling for LLM API call
     try:
