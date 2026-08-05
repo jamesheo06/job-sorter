@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "Job Sorter",
+    "description": "Analyze UBC Science Co-op job postings with AI.",
+    "version": "1.0.0",
+
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+
+    "host_permissions": [
+        "https://scope.sciencecoop.ubc.ca/*",
+        "http://localhost:8000/*"
+    ],
+
+    "action": {
+        "default_popup": "popup/popup.html"
+    }
+}
