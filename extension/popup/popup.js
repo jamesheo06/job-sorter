@@ -1,15 +1,45 @@
 // document is the whole webpage
 // .getElementById("analyzeBtn") - searches that page for an element whose id attribute is "analyzeBtn" and returns a reference to that DOM element
 // DOM element is a JavaScript object representing one HTML tag on the page
+const button = document.getElementById("analyzeBtn");
+const resumeInput = document.getElementById("resumeInput");
+const saveResumeBtn = document.getElementById("saveResumeBtn");
+const resumeStatus = document.getElementById("resumeStatus");
+
+// Load saved resume into the textarea when the popup opens
+// chrome.storage.local is Chrome's built-in key-value storage for extensions
+// .get("resume", callback) - asks for the value stored under the key "resume"
+// if (data.resume) - guards against empty case
+chrome.storage.local.get("resume", (data) => {
+	if (data.resume) {
+		resumeInput.value = data.resume;
+	}
+});
+
+// .set({ resume: resumeInput.value }, callback) - writes the textarea's current value under the key "resume"
+// The callback then shows "Saved!", and setTimeout(..., 2000) clears it after 2 seconds
+saveResumeBtn.addEventListener("click", () => {
+	chrome.storage.local.set({ resume: resumeInput.value }, () => {
+		resumeStatus.textContent = "Saved!";
+		setTimeout(() => { resumeStatus.textContent = ""; }, 2000);
+	});
+});
+
 // .addEventListener("click", async () => { ... }) - when the element is clicked, run this function
 // async - function is allowed to use 'await' inside it
-const button = document.getElementById("analyzeBtn");
-
 button.addEventListener("click", async () => {
     button.disabled = true;
     button.textContent = "Analyzing...";
 
     try {
+        // const { resume } = ... - destructing, pulls the resume field from the object
+        // await chrome.storage.local.get("resume") - promise-based form
+        // throw error when when key is never set or empty
+        const { resume } = await chrome.storage.local.get("resume");
+        if (!resume) {
+			throw new Error("No resume saved yet. Add one in Resume settings above.");
+		}
+
         // 1. Get the active tab
         // chrome.tabs.query() - asks Chrome to give a list of tabs matching the filters
         // { active: true, currentWindow: true } - whatever page you're looking at when you click the extension icon
@@ -35,8 +65,6 @@ button.addEventListener("click", async () => {
         });
 
         // 4. Send the extracted data to your backend
-        const RESUME_TEXT = `Resume`; // temporary, move to storage later
-
         // fetch - standard web API for HTTP requests
         // POST request to backend (POST request is sending data, GET request is retreiving data from a server)
         // These requests are request methods in HTTP request
@@ -48,7 +76,7 @@ button.addEventListener("click", async () => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                resume: RESUME_TEXT,
+                resume: resume,
                 title: result.title,
                 company: result.company,
                 job_description: result.rawText,
