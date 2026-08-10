@@ -22,3 +22,7 @@ textarea {
 	color: green;
 	margin: 4px 0;
 }
+
+.hidden {
+	display: none;
+}

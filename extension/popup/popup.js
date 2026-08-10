@@ -6,6 +6,14 @@ const resumeInput = document.getElementById("resumeInput");
 const saveResumeBtn = document.getElementById("saveResumeBtn");
 const resumeStatus = document.getElementById("resumeStatus");
 
+const resultSection = document.getElementById("resultSection");
+const resultCategory = document.getElementById("resultCategory");
+const resultConfidence = document.getElementById("resultConfidence");
+const resultReasoning = document.getElementById("resultReasoning");
+const resultMatching = document.getElementById("resultMatching");
+const resultMissing = document.getElementById("resultMissing");
+const errorMessage = document.getElementById("errorMessage");
+
 // Load saved resume into the textarea when the popup opens
 // chrome.storage.local is Chrome's built-in key-value storage for extensions
 // .get("resume", callback) - asks for the value stored under the key "resume"
@@ -25,11 +33,29 @@ saveResumeBtn.addEventListener("click", () => {
 	});
 });
 
+// Takes the AnalysisResult object from the backend and writes it into the DOM
+// .textContent - sets the visible text of an element (safer than innerHTML, no HTML parsing)
+function renderResult(data) {
+	resultCategory.textContent = data.category;
+	resultConfidence.textContent = `Confidence: ${data.confidence}%`;
+	resultReasoning.textContent = data.reasoning;
+
+	// .map() builds an array of "<li>text</li>" elements, .join("") glues them into one string
+	resultMatching.innerHTML = data.matching_skills.map(skill => `<li>${skill}</li>`).join("");
+	resultMissing.innerHTML = data.missing_skills.map(skill => `<li>${skill}</li>`).join("");
+
+	resultSection.classList.remove("hidden");
+}
+
 // .addEventListener("click", async () => { ... }) - when the element is clicked, run this function
 // async - function is allowed to use 'await' inside it
 button.addEventListener("click", async () => {
     button.disabled = true;
     button.textContent = "Analyzing...";
+
+    resultSection.classList.add("hidden");
+    errorMessage.classList.add("hidden");
+    reasoningDetails.removeAttribute("open");
 
     try {
         // const { resume } = ... - destructing, pulls the resume field from the object
@@ -87,10 +113,13 @@ button.addEventListener("click", async () => {
         // response.json() - actually reads and parses the response body as JSON, giving a real JS object
         const data = await response.json();
         console.log("Analysis result:", data);
+        renderResult(data);
 
         button.textContent = "Analyze Job";
     } catch (err) {
         console.error("Analysis failed:", err);
+        errorMessage.textContent = err.message;
+        errorMessage.classList.remove("hidden");
         button.textContent = "Error - try again";
     } finally {
         button.disabled = false;

@@ -21,6 +21,27 @@
 		Analyze Job
 	</button>
 
+    <div id="resultSection" class="hidden">
+		<h3 id="resultCategory"></h3>
+		<p id="resultConfidence"></p>
+
+        <details id="reasoningDetails">
+			<summary>Why?</summary>
+			<p id="resultReasoning"></p>
+		</details>
+
+		<div>
+			<strong>Matching skills:</strong>
+			<ul id="resultMatching"></ul>
+		</div>
+		<div>
+			<strong>Missing skills:</strong>
+			<ul id="resultMissing"></ul>
+		</div>
+	</div>
+
+	<p id="errorMessage" class="hidden"></p>
+
 	<script src="popup.js"></script>
 
 </body>
