@@ -18,5 +18,8 @@ function extractJobPosting() {
     const panel = document.querySelector(".panel-body");
     const rawText = panel?.innerText.trim() ?? "";
 
-    return { title, company, rawText };
+    // The posting's stable numeric ID, stored in a hidden form field
+	const postingId = document.querySelector('input[name="postingId"]')?.value ?? "";
+
+    return { title, company, rawText, postingId };
 }

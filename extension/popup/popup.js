@@ -106,6 +106,7 @@ button.addEventListener("click", async () => {
                 title: result.title,
                 company: result.company,
                 job_description: result.rawText,
+                posting_id: result.postingId,
             }),
         });
 

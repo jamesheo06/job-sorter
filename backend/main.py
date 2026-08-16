@@ -3,11 +3,42 @@ from pydantic import BaseModel, ValidationError
 from google import genai
 import os, json
 from dotenv import load_dotenv
+import sqlite3
+from datetime import datetime
 
 load_dotenv()
 # fastapi allows other programs to call your functions
 app = FastAPI()
 client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+
+# sqlite3.connect() creates the file if it doesn't exist yet, opens it if it does
+# a "connection" is how Python talks to the database file
+DB_PATH = "job_sorter.db"
+
+def init_db():
+	conn = sqlite3.connect(DB_PATH)
+	# a "cursor" is what actually runs SQL commands through the connection
+	cursor = conn.cursor()
+	# CREATE TABLE IF NOT EXISTS - only creates it the first time this runs; does nothing on later restarts
+	cursor.execute("""
+		CREATE TABLE IF NOT EXISTS analyses (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			posting_id TEXT,
+			title TEXT,
+			company TEXT,
+			category TEXT,
+			confidence INTEGER,
+			reasoning TEXT,
+			matching_skills TEXT,
+			missing_skills TEXT,
+			timestamp TEXT
+		)
+	""")
+	# commit() actually saves the change to the file - without it, nothing persists
+	conn.commit()
+	conn.close()
+
+init_db()
 
 # defines the shape of input, 422 error if it doesn't match
 class AnalyzeRequest(BaseModel):
@@ -15,6 +46,7 @@ class AnalyzeRequest(BaseModel):
     title: str | None = None
     company: str | None = None
     job_description: str
+    posting_id: str | None = None
 
 # defines the shape of the output
 class AnalysisResult(BaseModel):
@@ -23,6 +55,27 @@ class AnalysisResult(BaseModel):
     confidence: int
     matching_skills: list[str]
     missing_skills: list[str]
+
+def save_analysis(req: AnalyzeRequest, result: AnalysisResult):
+	conn = sqlite3.connect(DB_PATH)
+	cursor = conn.cursor()
+	# ? placeholders prevent SQL injection - never build SQL strings with f-strings/+
+	cursor.execute("""
+		INSERT INTO analyses (posting_id, title, company, category, confidence, reasoning, matching_skills, missing_skills, timestamp)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	""", (
+		req.posting_id,
+		req.title,
+		req.company,
+		result.category,
+		result.confidence,
+		result.reasoning,
+		json.dumps(result.matching_skills),  # list -> JSON string, since SQLite has no list type
+		json.dumps(result.missing_skills),
+		datetime.now().isoformat(),
+	))
+	conn.commit()
+	conn.close()
 
 # whenever someone sends a POST request to /analyze, run this function and send back its results 
 @app.post("/analyze")
@@ -92,4 +145,5 @@ Rules:
     except ValidationError as e:
         return {"error": "LLM response did not match expected shape", "details": str(e), "raw": parsed}
 
+    save_analysis(req, validated)
     return validated
